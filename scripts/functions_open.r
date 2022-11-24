@@ -246,13 +246,13 @@ get_plans_sql <- function(con_analytics,
 #   return(df_pred_list)
 # }
 
-get_unique_plans_list_sql <- function(con_analytics) {
+get_unique_plans_list_sql <- function(con_postgre) {
   
   request_code <- paste0("SELECT pred_name, pred_date
 FROM public.df_plans
 GROUP BY pred_name, pred_date")
   
-  df_pred_list <- dbGetQuery(con_analytics,request_code)
+  df_pred_list <- dbGetQuery(con_postgre,request_code)
   df_pred_list$pred_date <- as.character(df_pred_list$pred_date)
   
   return(df_pred_list)
