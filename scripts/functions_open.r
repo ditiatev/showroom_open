@@ -27,20 +27,24 @@ get_df_sheck <- function(start_date = '2022-05-01',end_date = '2022-06-01',
 # GROUP BY [ds], [code_1c_shop], [department_name]
 # ORDER BY [code_1c_shop], [department_name], [ds]")
   
-  request_code <- paste0("SELECT code_1c_shop,
-department_name,
-date as ds,
-
-SUM(sales_amount_fact) AS sales,
-SUM(prime_cost) AS prime,
-COUNT(distinct guid_check) AS n_checks
-
-FROM public.df_sales	
-
-WHERE (date BETWEEN 'Repl_start_date' AND 'Repl_end_date')
-
-GROUP BY ds, code_1c_shop, department_name
-ORDER BY code_1c_shop, department_name")
+#   request_code <- paste0("SELECT code_1c_shop,
+# department_name,
+# date as ds,
+# 
+# SUM(sales_amount_fact) AS sales,
+# SUM(prime_cost) AS prime,
+# COUNT(distinct guid_check) AS n_checks
+# 
+# FROM public.df_sales	
+# 
+# WHERE (date BETWEEN 'Repl_start_date' AND 'Repl_end_date')
+# 
+# GROUP BY ds, code_1c_shop, department_name
+# ORDER BY code_1c_shop, department_name")
+  
+  request_code <- paste0("SELECT * 
+FROM public.mv_sales_depts
+WHERE ds BETWEEN 'Repl_start_date' AND 'Repl_end_date'")
   
   # date
   request_code <- gsub("Repl_start_date", start_date, request_code)
@@ -56,6 +60,7 @@ ORDER BY code_1c_shop, department_name")
   df_sheck$ds <- as.Date(df_sheck$ds)
   
   df_sheck <- df_sheck %>%
+    filter(!is.na(department_name)) %>%
     mutate(dep_id = case_when(department_name == 'Мясной' ~ 'СМ',
                               department_name == 'Колбасный' ~ 'БЛ',
                               department_name == 'Кондитерский' ~ 'НК',
