@@ -392,6 +392,22 @@ ORDER BY [code_1c_shop], [department_name], [sales] DESC, [date]")
   return(df_sheck)
 }
 
+get_avg_plans_year_sql <- function(con_postgre,
+                                   start_date = '2022-01-01',
+                                   end_date   = '2023-01-01') {
+  
+  request_code <- paste0("SELECT * FROM public.pred_avg_year
+WHERE pred_date BETWEEN 'Repl_start_date' AND 'Repl_end_date'")
+  
+  request_code <- gsub("Repl_start_date", start_date, request_code)
+  request_code <- gsub("Repl_end_date",   end_date,   request_code)
+  
+  df <- dbGetQuery(con_postgre,request_code)
+  df$pred_date <- as.Date(df$pred_date)
+  
+  return(df)
+}
+
 get_dalion_plans_sql <- function(con_analytics,
                                  start_date = '2022-08-29',
                                  end_date   = '2022-09-04') {
