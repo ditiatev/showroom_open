@@ -114,6 +114,20 @@ WHERE ds BETWEEN 'Repl_start_date' AND 'Repl_end_date'")
   return(df_sheck)
 }
 
+get_df_elasticity <- function(start_date = '2022-05-01',end_date = '2022-06-01',
+                         con_postgre) {
+  
+  request_code <- paste0("SELECT * FROM public.df_elasticity")
+  
+  # date
+  request_code <- gsub("Repl_start_date", start_date, request_code)
+  request_code <- gsub("Repl_end_date",   end_date,   request_code)
+
+  df_elasticity <- dbGetQuery(con_postgre,request_code)
+  df_elasticity$week_start <- as.Date(df_elasticity$week_start)
+
+  return(df_elasticity)
+}
 
 get_ipc_sql <- function(con_postgre, ipc_type = 'food', prediciton = FALSE) {
   
@@ -269,6 +283,25 @@ GROUP BY pred_name, pred_date")
   return(df_pred_list)
 }
 
+get_nomenclature_num_propertis_sql <- function(con_postgre) {
+  
+  request_code <- paste0("SELECT * FROM public.mv_nomenclature_num_propertis")
+  
+  df_pred_list <- dbGetQuery(con_postgre,request_code)
+  df_pred_list$week_start <- as.Date(df_pred_list$week_start)
+  
+  return(df_pred_list)
+}
+
+get_nomenclature_sql <- function(con_postgre) {
+  
+  request_code <- paste0("SELECT * FROM public.df_nomenclature")
+  
+  df <- dbGetQuery(con_postgre,request_code)
+  
+  return(df)
+}
+
 
 get_df_check_structure <- function(start_date = '2022-06-01',
                                    end_date   = '2022-06-01',
@@ -391,6 +424,11 @@ ORDER BY [code_1c_shop], [department_name], [sales] DESC, [date]")
   
   return(df_sheck)
 }
+
+
+
+
+
 
 get_avg_plans_year_sql <- function(con_postgre,
                                    start_date = '2022-01-01',
