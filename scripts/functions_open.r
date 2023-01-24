@@ -129,6 +129,86 @@ get_df_elasticity <- function(start_date = '2022-05-01',end_date = '2022-06-01',
   return(df_elasticity)
 }
 
+get_df_price_sim <- function(df_elasticity,
+                             f_code_1c_shop = NULL,
+                             f_department_name = NULL,
+                             f_code_1c_nomenclature = NULL,
+                             variable_costs = .1,
+                             start_date = ymd('2022-09-01'),
+                             end_date   = ymd('2022-09-30')) {
+  
+  df <- df_elasticity
+  if (!is.null(f_code_1c_shop)) {df <- df %>% filter(code_1c_shop %in% f_code_1c_shop)}
+  if (!is.null(f_department_name)) {df <- df %>% filter(department_name %in% f_department_name)}
+  if (!is.null(f_code_1c_nomenclature)) {df <- df %>% filter(code_1c_nomenclature %in% f_code_1c_nomenclature)}
+  
+  df <- df %>%
+    filter(!is.na(elasticity_up)) %>%
+    group_by(week_start) %>%
+    summarise(elasticity_up   = mean(elasticity_up   * sales_ma13/mean(sales_ma13)),
+              elasticity_down = mean(elasticity_down * sales_ma13/mean(sales_ma13)),
+              price           = mean(fact_price_ma4  * sales_ma13/mean(sales_ma13)),
+              prime           = mean(prime_ma4       * sales_ma13/mean(sales_ma13)),
+              pp_level_4to52  = mean(pp_level_4to52  * sales_ma13/mean(sales_ma13)),
+              value           = mean(sales_ma13)/price) %>%
+    ungroup()
+  
+  df_sim <- df %>% filter(!is.na(elasticity_up)) %>%
+    filter(week_start >= start_date) %>%
+    filter(week_start <= end_date) %>%
+    #slice_max(n = 4, order_by = week_start) %>%
+    summarise(elasticity_up = mean(elasticity_up),
+              elasticity_down = mean(elasticity_down),
+              price = mean(price),
+              prime = mean(prime),
+              value = mean(value),
+              pp_level_4to52 = mean(pp_level_4to52))
+  
+  m_pp_up   <- knnreg(df[,'pp_level_4to52'], df$elasticity_up,   k = 7)
+  m_pp_down <- knnreg(df[,'pp_level_4to52'], df$elasticity_down, k = 7)
+  df_price_down <- data.frame('price' = seq(from = df_sim$price, to = df_sim$price*.8,length.out=21),
+                              'price_change_pers' = seq(from = 0, to = -20,length.out=21),
+                              'elasticity'  = predict(m_pp_up, data.frame('pp_level_4to52' = seq(from = df_sim$pp_level_4to52*1,
+                                                                                                 to   = df_sim$pp_level_4to52*1.2,
+                                                                                                 length.out=21))),
+                              value = df_sim$value)
+  
+  for (i in 2:21) {
+    df_price_down[i,'value'] <- df_price_down[i-1,'value']*(1+df_price_down[i,]$elasticity/100)
+  }
+  df_price_down$revenue <- df_price_down$price*df_price_down$value
+  
+  df_price_up <- data.frame('price' = seq(from = df_sim$price, to = df_sim$price*1.2,length.out=21),
+                            'price_change_pers' = seq(from = 0, to = 20,length.out=21),
+                            'elasticity'  = predict(m_pp_up, data.frame('pp_level_4to52' = seq(from = df_sim$pp_level_4to52*1,
+                                                                                               to   = df_sim$pp_level_4to52*.8,
+                                                                                               length.out=21))),
+                            value = df_sim$value)
+  
+  for (i in 2:21) {
+    df_price_up[i,'value'] <- df_price_up[i-1,'value']*(1-df_price_up[i,]$elasticity/100)
+  }
+  
+  df_price_up$revenue <- df_price_up$price*df_price_up$value
+  
+  df_price_sim <- rbind(
+    df_price_down,
+    df_price_up %>%
+      filter(price_change_pers != 0)) %>%
+    arrange(price)
+  
+  df_price_sim$prime <- df_sim$prime
+  df_price_sim$fin_results <- ((1-variable_costs)*df_price_sim$price-df_price_sim$prime)*df_price_sim$value
+  revenue_0 <- df_price_sim[df_price_sim$price_change_pers==0,]$revenue/1000
+  value_0   <- df_price_sim[df_price_sim$price_change_pers==0,]$value/100
+  
+  df_price_sim$value       <- df_price_sim$value/value_0
+  df_price_sim$revenue     <- df_price_sim$revenue/revenue_0
+  df_price_sim$fin_results <- df_price_sim$fin_results/revenue_0
+  
+  return(df_price_sim)
+}
+
 get_ipc_sql <- function(con_postgre, ipc_type = 'food', prediciton = FALSE) {
   
 #   request_code <- paste0("SELECT [date]
