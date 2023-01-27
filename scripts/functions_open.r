@@ -197,14 +197,17 @@ get_df_price_sim <- function(df_elasticity,
       filter(price_change_pers != 0)) %>%
     arrange(price)
   
-  df_price_sim$prime <- df_sim$prime
-  df_price_sim$fin_results <- ((1-variable_costs)*df_price_sim$price-df_price_sim$prime)*df_price_sim$value
   revenue_0 <- df_price_sim[df_price_sim$price_change_pers==0,]$revenue/1000
   value_0   <- df_price_sim[df_price_sim$price_change_pers==0,]$value/100
   
-  df_price_sim$value       <- df_price_sim$value/value_0
-  df_price_sim$revenue     <- df_price_sim$revenue/revenue_0
-  df_price_sim$fin_results <- df_price_sim$fin_results/revenue_0
+  df_price_sim <- df_price_sim %>%
+    mutate(prime         = df_sim$prime,
+           revenue       = revenue/revenue_0,
+           cost          = revenue/price*prime,
+           cost_variable = variable_costs*revenue,
+           fin_results   = revenue-cost-cost_variable,
+           value         = value/value_0) %>%
+    dplyr::select(price_change_pers,price,prime,elasticity,value,revenue,cost,cost_variable,fin_results)
   
   return(df_price_sim)
 }
